@@ -196,10 +196,17 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>HRUFC Scoreboard Control</h1>
+            <h1>HRUFC Rugby Scoreboard Control</h1>
             <div id="status" class="status disconnected">
                 Connection Status: Disconnected
             </div>
+            <div id="simulation-status" class="status" style="display: none;">
+                Simulation Mode: Active
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-bottom: 20px;">
+            <a href="/config" style="color: #007bff; text-decoration: none; padding: 10px 20px; border: 1px solid #007bff; border-radius: 4px;">⚙️ Configuration</a>
         </div>
 
         <div class="scoreboard">
@@ -249,6 +256,28 @@
             </div>
 
             <div class="control-group">
+                <h3>Rugby Scoring</h3>
+                <div class="form-group">
+                    <label>Home Team:</label>
+                    <div class="button-group">
+                        <button class="success" onclick="addTry('home')">Add Try (+5)</button>
+                        <button class="warning" onclick="removeTry('home')">Remove Try (-5)</button>
+                        <button class="success" onclick="addConversion('home')">Add Conversion (+2)</button>
+                        <button class="success" onclick="addPenalty('home')">Add Penalty (+3)</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Away Team:</label>
+                    <div class="button-group">
+                        <button class="success" onclick="addTry('away')">Add Try (+5)</button>
+                        <button class="warning" onclick="removeTry('away')">Remove Try (-5)</button>
+                        <button class="success" onclick="addConversion('away')">Add Conversion (+2)</button>
+                        <button class="success" onclick="addPenalty('away')">Add Penalty (+3)</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-group">
                 <h3>Timer Control</h3>
                 <div class="form-group">
                     <label>Set Timer:</label>
@@ -277,7 +306,8 @@
             away_score: 0,
             timer_minutes: 0,
             timer_seconds: 0,
-            timer_running: false
+            timer_running: false,
+            simulation_mode: false
         };
 
         // Update UI with current state
@@ -288,10 +318,24 @@
             const statusEl = document.getElementById('status');
             if (state.connected) {
                 statusEl.className = 'status connected';
-                statusEl.textContent = 'Connection Status: Connected';
+                if (state.simulation_mode) {
+                    statusEl.textContent = 'Connection Status: Simulation Mode';
+                } else {
+                    statusEl.textContent = 'Connection Status: Connected';
+                }
             } else {
                 statusEl.className = 'status disconnected';
                 statusEl.textContent = 'Connection Status: Disconnected';
+            }
+
+            // Show/hide simulation status
+            const simStatusEl = document.getElementById('simulation-status');
+            if (state.simulation_mode) {
+                simStatusEl.style.display = 'block';
+                simStatusEl.className = 'status connected';
+                simStatusEl.textContent = 'Simulation Mode: Active';
+            } else {
+                simStatusEl.style.display = 'none';
             }
 
             // Update scoreboard display
@@ -472,6 +516,52 @@
                 loadStatus();
             } catch (error) {
                 showMessage(`Failed to reset timer: ${error.message}`, true);
+            }
+        }
+
+        // Rugby scoring functions
+        
+        // Add try (5 points)
+        async function addTry(team) {
+            try {
+                await apiCall('rugby/try', 'POST', { team: team });
+                showMessage(`Try added for ${team.charAt(0).toUpperCase() + team.slice(1)} team (+5 points)`);
+                loadStatus();
+            } catch (error) {
+                showMessage(`Failed to add try: ${error.message}`, true);
+            }
+        }
+
+        // Remove try (5 points)
+        async function removeTry(team) {
+            try {
+                await apiCall('rugby/try', 'DELETE', { team: team });
+                showMessage(`Try removed for ${team.charAt(0).toUpperCase() + team.slice(1)} team (-5 points)`);
+                loadStatus();
+            } catch (error) {
+                showMessage(`Failed to remove try: ${error.message}`, true);
+            }
+        }
+
+        // Add conversion (2 points)
+        async function addConversion(team) {
+            try {
+                await apiCall('rugby/conversion', 'POST', { team: team });
+                showMessage(`Conversion added for ${team.charAt(0).toUpperCase() + team.slice(1)} team (+2 points)`);
+                loadStatus();
+            } catch (error) {
+                showMessage(`Failed to add conversion: ${error.message}`, true);
+            }
+        }
+
+        // Add penalty (3 points)
+        async function addPenalty(team) {
+            try {
+                await apiCall('rugby/penalty', 'POST', { team: team });
+                showMessage(`Penalty added for ${team.charAt(0).toUpperCase() + team.slice(1)} team (+3 points)`);
+                loadStatus();
+            } catch (error) {
+                showMessage(`Failed to add penalty: ${error.message}`, true);
             }
         }
 

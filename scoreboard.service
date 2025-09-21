@@ -1,0 +1,20 @@
+# Configuration for systemd service
+[Unit]
+Description=HRUFC Scoreboard Server
+After=network.target
+
+[Service]
+Type=simple
+User=scoreboard
+Group=scoreboard
+WorkingDirectory=/opt/scoreboard
+ExecStart=/opt/scoreboard/target/release/scoreboard-server
+Environment=SCOREBOARD_ADDRESS=192.168.1.100:5200
+Environment=CARD_ID=1
+Environment=WEB_PORT=3030
+Environment=RUST_LOG=info
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

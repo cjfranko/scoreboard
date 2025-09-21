@@ -1,5 +1,7 @@
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use tokio::task::JoinHandle;
+use tokio::time::{interval, Duration};
 use anyhow::Result;
 use log::{info, error};
 
@@ -17,6 +19,7 @@ pub struct ScoreboardController {
     state: Arc<Mutex<ScoreboardState>>,
     simulation_mode: bool,
     config: Config,
+    timer_task: Arc<Mutex<Option<JoinHandle<()>>>>,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -30,6 +33,8 @@ pub struct ScoreboardState {
     pub timer_running: bool,
     pub connected: bool,
     pub simulation_mode: bool,
+    pub current_period: u8, // 1 = first half, 2 = second half, 0 = before game/halftime
+    pub period_time_remaining: u16, // seconds remaining in current period
 }
 
 impl Default for ScoreboardState {
@@ -44,6 +49,8 @@ impl Default for ScoreboardState {
             timer_running: false,
             connected: false,
             simulation_mode: false,
+            current_period: 0,
+            period_time_remaining: 0,
         }
     }
 }
@@ -69,6 +76,7 @@ impl ScoreboardController {
             })),
             simulation_mode,
             config,
+            timer_task: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -116,11 +124,17 @@ impl ScoreboardController {
         if self.simulation_mode {
             // In simulation mode, just log the state
             let state = self.state.lock().await;
-            info!("Simulation display update: {} {} - {} {}, Timer: {:02}:{:02} {}",
+            let period_info = match state.current_period {
+                1 => format!("First Half ({}:{:02} remaining)", state.period_time_remaining / 60, state.period_time_remaining % 60),
+                2 => format!("Second Half ({}:{:02} remaining)", state.period_time_remaining / 60, state.period_time_remaining % 60),
+                _ => "Pre-game/Halftime".to_string(),
+            };
+            info!("Simulation display update: {} {} - {} {}, Timer: {:02}:{:02} {}, Period: {}",
                 state.home_team, state.home_score,
                 state.away_team, state.away_score,
                 state.timer_minutes, state.timer_seconds,
-                if state.timer_running { "(Running)" } else { "(Stopped)" }
+                if state.timer_running { "(Running)" } else { "(Stopped)" },
+                period_info
             );
             return Ok(());
         }
@@ -236,7 +250,61 @@ impl ScoreboardController {
             state.timer_running = true;
         }
         
-        if !self.simulation_mode {
+        if self.simulation_mode {
+            // Start simulation timer task
+            let state_clone = self.state.clone();
+            let timer_task = tokio::spawn(async move {
+                let mut interval = interval(Duration::from_secs(1));
+                
+                loop {
+                    interval.tick().await;
+                    
+                    let (timer_minutes, timer_seconds, should_break) = {
+                        let mut state = state_clone.lock().await;
+                        if !state.timer_running {
+                            return;
+                        }
+                        
+                        // Increment timer
+                        state.timer_seconds += 1;
+                        if state.timer_seconds >= 60 {
+                            state.timer_seconds = 0;
+                            state.timer_minutes += 1;
+                            if state.timer_minutes >= 100 {
+                                // Cap at 99:59 to prevent overflow
+                                state.timer_minutes = 99;
+                                state.timer_seconds = 59;
+                            }
+                        }
+                        
+                        // Update period time remaining if in a period
+                        if state.current_period > 0 && state.period_time_remaining > 0 {
+                            state.period_time_remaining -= 1;
+                            if state.period_time_remaining == 0 {
+                                info!("Period {} ended", state.current_period);
+                                // Timer keeps running but period ends
+                            }
+                        }
+                        
+                        (state.timer_minutes, state.timer_seconds, !state.timer_running)
+                    };
+                    
+                    if should_break {
+                        break;
+                    }
+                    
+                    // Log every 10 seconds to avoid spam
+                    if timer_seconds % 10 == 0 {
+                        info!("Timer: {:02}:{:02}", timer_minutes, timer_seconds);
+                    }
+                }
+                
+                info!("Simulation timer task ended");
+            });
+            
+            let mut timer_task_handle = self.timer_task.lock().await;
+            *timer_task_handle = Some(timer_task);
+        } else {
             let mut client_option = self.client.lock().await;
             let client = client_option.as_mut()
                 .ok_or_else(|| anyhow::anyhow!("No client available in non-simulation mode"))?;
@@ -254,7 +322,13 @@ impl ScoreboardController {
             state.timer_running = false;
         }
         
-        if !self.simulation_mode {
+        if self.simulation_mode {
+            // Stop the simulation timer task
+            let mut timer_task_handle = self.timer_task.lock().await;
+            if let Some(task) = timer_task_handle.take() {
+                task.abort();
+            }
+        } else {
             let mut client_option = self.client.lock().await;
             let client = client_option.as_mut()
                 .ok_or_else(|| anyhow::anyhow!("No client available in non-simulation mode"))?;
@@ -268,6 +342,48 @@ impl ScoreboardController {
     /// Reset timer
     pub async fn reset_timer(&self) -> Result<()> {
         self.set_timer(0, 0).await?;
+        self.stop_timer().await
+    }
+
+    /// Start first half (40 minutes by default)
+    pub async fn start_first_half(&self) -> Result<()> {
+        let first_half_minutes = self.config.rugby.first_half_minutes;
+        {
+            let mut state = self.state.lock().await;
+            state.current_period = 1;
+            state.period_time_remaining = (first_half_minutes as u16) * 60;
+            state.timer_minutes = 0;
+            state.timer_seconds = 0;
+        }
+        info!("Starting first half - {} minutes", first_half_minutes);
+        self.start_timer().await
+    }
+
+    /// Start second half (40 minutes by default, timer continues from first half)
+    pub async fn start_second_half(&self) -> Result<()> {
+        let second_half_minutes = self.config.rugby.second_half_minutes;
+        {
+            let mut state = self.state.lock().await;
+            state.current_period = 2;
+            state.period_time_remaining = (second_half_minutes as u16) * 60;
+            // Timer continues from where first half ended (typically around 40:00)
+        }
+        info!("Starting second half - {} minutes", second_half_minutes);
+        self.start_timer().await
+    }
+
+    /// End current period (halftime or full time)
+    pub async fn end_period(&self) -> Result<()> {
+        {
+            let mut state = self.state.lock().await;
+            if state.current_period == 1 {
+                info!("Halftime");
+            } else if state.current_period == 2 {
+                info!("Full time");
+            }
+            state.current_period = 0;
+            state.period_time_remaining = 0;
+        }
         self.stop_timer().await
     }
 
@@ -342,6 +458,74 @@ impl ScoreboardController {
             "away" => {
                 let current_score = self.get_away_score().await;
                 self.set_scores(self.get_home_score().await, current_score + penalty_points).await
+            }
+            _ => Err(anyhow::anyhow!("Invalid team: {}", team)),
+        }
+    }
+
+    /// Remove a conversion from the specified team (-2 points)
+    pub async fn remove_conversion(&self, team: &str) -> Result<()> {
+        let conversion_points = self.config.rugby.conversion_points;
+        match team.to_lowercase().as_str() {
+            "home" => {
+                let current_score = self.get_home_score().await;
+                let new_score = if current_score >= conversion_points {
+                    current_score - conversion_points
+                } else {
+                    0
+                };
+                self.set_scores(new_score, self.get_away_score().await).await
+            }
+            "away" => {
+                let current_score = self.get_away_score().await;
+                let new_score = if current_score >= conversion_points {
+                    current_score - conversion_points
+                } else {
+                    0
+                };
+                self.set_scores(self.get_home_score().await, new_score).await
+            }
+            _ => Err(anyhow::anyhow!("Invalid team: {}", team)),
+        }
+    }
+
+    /// Remove a penalty from the specified team (-3 points)
+    pub async fn remove_penalty(&self, team: &str) -> Result<()> {
+        let penalty_points = self.config.rugby.penalty_points;
+        match team.to_lowercase().as_str() {
+            "home" => {
+                let current_score = self.get_home_score().await;
+                let new_score = if current_score >= penalty_points {
+                    current_score - penalty_points
+                } else {
+                    0
+                };
+                self.set_scores(new_score, self.get_away_score().await).await
+            }
+            "away" => {
+                let current_score = self.get_away_score().await;
+                let new_score = if current_score >= penalty_points {
+                    current_score - penalty_points
+                } else {
+                    0
+                };
+                self.set_scores(self.get_home_score().await, new_score).await
+            }
+            _ => Err(anyhow::anyhow!("Invalid team: {}", team)),
+        }
+    }
+
+    /// Add a penalty try to the specified team (7 points - try + conversion)
+    pub async fn add_penalty_try(&self, team: &str) -> Result<()> {
+        let penalty_try_points = 7; // Standard penalty try is 7 points (try + conversion combined)
+        match team.to_lowercase().as_str() {
+            "home" => {
+                let current_score = self.get_home_score().await;
+                self.set_scores(current_score + penalty_try_points, self.get_away_score().await).await
+            }
+            "away" => {
+                let current_score = self.get_away_score().await;
+                self.set_scores(self.get_home_score().await, current_score + penalty_try_points).await
             }
             _ => Err(anyhow::anyhow!("Invalid team: {}", team)),
         }

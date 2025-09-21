@@ -5,24 +5,98 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HRUFC Scoreboard Control</title>
     <style>
+        :root {
+            /* Light mode (default) */
+            --bg-primary: #f0f0f0;
+            --bg-secondary: white;
+            --text-primary: #333;
+            --text-secondary: #495057;
+            --border-color: #dee2e6;
+            --shadow: rgba(0,0,0,0.1);
+            --input-bg: white;
+            --input-border: #ced4da;
+            
+            /* Status colors */
+            --status-connected-bg: #d4edda;
+            --status-connected-text: #155724;
+            --status-connected-border: #c3e6cb;
+            --status-disconnected-bg: #f8d7da;
+            --status-disconnected-text: #721c24;
+            --status-disconnected-border: #f5c6cb;
+            
+            /* Button colors */
+            --btn-primary: #007bff;
+            --btn-success: #28a745;
+            --btn-warning: #ffc107;
+            --btn-danger: #dc3545;
+            --btn-text: white;
+        }
+
+        [data-theme="dark"] {
+            /* Dark mode */
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2d2d2d;
+            --text-primary: #ffffff;
+            --text-secondary: #b3b3b3;
+            --border-color: #404040;
+            --shadow: rgba(255,255,255,0.1);
+            --input-bg: #404040;
+            --input-border: #555555;
+            
+            /* Status colors (adjusted for dark mode) */
+            --status-connected-bg: #1e4620;
+            --status-connected-text: #90ee90;
+            --status-connected-border: #2d5a2f;
+            --status-disconnected-bg: #4a1e1e;
+            --status-disconnected-text: #ffb3b3;
+            --status-disconnected-border: #5a2d2d;
+            
+            /* Button colors remain the same but with better contrast */
+            --btn-primary: #0d6efd;
+            --btn-success: #198754;
+            --btn-warning: #ffc107;
+            --btn-danger: #dc3545;
+            --btn-text: white;
+        }
+
         body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 20px;
-            background-color: #f0f0f0;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            background-color: white;
+            background-color: var(--bg-secondary);
             border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px var(--shadow);
             padding: 20px;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
         }
         .header {
             text-align: center;
             margin-bottom: 30px;
-            color: #333;
+            color: var(--text-primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .theme-toggle {
+            background: none;
+            border: 2px solid var(--text-primary);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        .theme-toggle:hover {
+            background-color: var(--text-primary);
+            color: var(--bg-secondary);
         }
         .status {
             display: flex;
@@ -34,14 +108,14 @@
             font-weight: bold;
         }
         .status.connected {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
+            background-color: var(--status-connected-bg);
+            color: var(--status-connected-text);
+            border: 1px solid var(--status-connected-border);
         }
         .status.disconnected {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
+            background-color: var(--status-disconnected-bg);
+            color: var(--status-disconnected-text);
+            border: 1px solid var(--status-disconnected-border);
         }
         .scoreboard {
             display: grid;
@@ -89,14 +163,15 @@
             gap: 20px;
         }
         .control-group {
-            background-color: #f8f9fa;
-            border: 1px solid #dee2e6;
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 15px;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
         }
         .control-group h3 {
             margin-top: 0;
-            color: #495057;
+            color: var(--text-secondary);
         }
         .form-group {
             margin-bottom: 15px;
@@ -105,47 +180,59 @@
             display: block;
             margin-bottom: 5px;
             font-weight: bold;
-            color: #495057;
+            color: var(--text-secondary);
         }
         input[type="text"], input[type="number"] {
             width: 100%;
             padding: 8px 12px;
-            border: 1px solid #ced4da;
+            border: 1px solid var(--input-border);
             border-radius: 4px;
             font-size: 14px;
             box-sizing: border-box;
+            background-color: var(--input-bg);
+            color: var(--text-primary);
+            transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
         }
         button {
-            background-color: #007bff;
-            color: white;
+            background-color: var(--btn-primary);
+            color: var(--btn-text);
             border: none;
             padding: 10px 20px;
             border-radius: 4px;
             cursor: pointer;
             font-size: 14px;
             margin: 5px 5px 5px 0;
+            transition: background-color 0.3s ease;
         }
         button:hover {
-            background-color: #0056b3;
-        }
-        button.danger {
-            background-color: #dc3545;
-        }
-        button.danger:hover {
-            background-color: #c82333;
+            filter: brightness(0.9);
         }
         button.success {
-            background-color: #28a745;
-        }
-        button.success:hover {
-            background-color: #218838;
+            background-color: var(--btn-success);
         }
         button.warning {
-            background-color: #ffc107;
+            background-color: var(--btn-warning);
             color: #212529;
         }
-        button.warning:hover {
-            background-color: #e0a800;
+        button.danger {
+            background-color: var(--btn-danger);
+        }
+        }
+        .message {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            display: none;
+        }
+        .message.success {
+            background-color: var(--status-connected-bg);
+            color: var(--status-connected-text);
+            border: 1px solid var(--status-connected-border);
+        }
+        .message.error {
+            background-color: var(--status-disconnected-bg);
+            color: var(--status-disconnected-text);
+            border: 1px solid var(--status-disconnected-border);
         }
         .button-group {
             display: flex;
@@ -159,22 +246,6 @@
         }
         .timer-input input {
             width: 60px;
-        }
-        .message {
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 4px;
-            display: none;
-        }
-        .message.success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        .message.error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
         }
         @media (max-width: 768px) {
             .controls {
@@ -197,6 +268,7 @@
     <div class="container">
         <div class="header">
             <h1>HRUFC Rugby Scoreboard Control</h1>
+            <button class="theme-toggle" onclick="toggleTheme()">🌙 Dark Mode</button>
             <div id="status" class="status disconnected">
                 Connection Status: Disconnected
             </div>
@@ -647,8 +719,38 @@
             }
         }
 
+        // Theme toggle functionality
+        function toggleTheme() {
+            const body = document.body;
+            const themeToggle = document.querySelector('.theme-toggle');
+            
+            if (body.getAttribute('data-theme') === 'dark') {
+                body.removeAttribute('data-theme');
+                themeToggle.textContent = '🌙 Dark Mode';
+                localStorage.setItem('theme', 'light');
+            } else {
+                body.setAttribute('data-theme', 'dark');
+                themeToggle.textContent = '☀️ Light Mode';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        // Initialize theme from localStorage
+        function initializeTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            const themeToggle = document.querySelector('.theme-toggle');
+            
+            if (savedTheme === 'dark') {
+                document.body.setAttribute('data-theme', 'dark');
+                themeToggle.textContent = '☀️ Light Mode';
+            } else {
+                themeToggle.textContent = '🌙 Dark Mode';
+            }
+        }
+
         // Initialize the page
         document.addEventListener('DOMContentLoaded', function() {
+            initializeTheme();
             loadStatus();
             
             // Auto-refresh status every 5 seconds

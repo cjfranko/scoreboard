@@ -29,6 +29,8 @@ pub struct RugbyConfig {
     pub try_points: u16,
     pub conversion_points: u16,
     pub penalty_points: u16,
+    pub first_half_minutes: u8,
+    pub second_half_minutes: u8,
 }
 
 impl Default for Config {
@@ -48,6 +50,8 @@ impl Default for Config {
                 try_points: 5,
                 conversion_points: 2,
                 penalty_points: 3,
+                first_half_minutes: 40,
+                second_half_minutes: 40,
             },
         }
     }

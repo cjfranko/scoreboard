@@ -299,6 +299,14 @@
                     <button class="warning" onclick="stopTimer()">Stop</button>
                     <button class="danger" onclick="resetTimer()">Reset</button>
                 </div>
+                <div class="form-group">
+                    <label>Rugby Periods:</label>
+                    <div class="button-group">
+                        <button class="success" onclick="startFirstHalf()">Start First Half</button>
+                        <button class="success" onclick="startSecondHalf()">Start Second Half</button>
+                        <button class="warning" onclick="endPeriod()">End Period</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -601,6 +609,41 @@
                 loadStatus();
             } catch (error) {
                 showMessage(`Failed to add penalty try: ${error.message}`, true);
+            }
+        }
+
+        // Rugby period controls
+
+        // Start first half
+        async function startFirstHalf() {
+            try {
+                await apiCall('rugby/start-first-half', 'POST');
+                showMessage('First half started');
+                loadStatus();
+            } catch (error) {
+                showMessage(`Failed to start first half: ${error.message}`, true);
+            }
+        }
+
+        // Start second half
+        async function startSecondHalf() {
+            try {
+                await apiCall('rugby/start-second-half', 'POST');
+                showMessage('Second half started');
+                loadStatus();
+            } catch (error) {
+                showMessage(`Failed to start second half: ${error.message}`, true);
+            }
+        }
+
+        // End current period
+        async function endPeriod() {
+            try {
+                await apiCall('rugby/end-period', 'POST');
+                showMessage('Period ended');
+                loadStatus();
+            } catch (error) {
+                showMessage(`Failed to end period: ${error.message}`, true);
             }
         }
 

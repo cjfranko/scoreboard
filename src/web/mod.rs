@@ -108,6 +108,9 @@ pub fn create_routes(
             .or(add_penalty(controller.clone()))
             .or(remove_penalty(controller.clone()))
             .or(add_penalty_try(controller.clone()))
+            .or(start_first_half(controller.clone()))
+            .or(start_second_half(controller.clone()))
+            .or(end_period(controller.clone()))
             .or(get_config(controller.clone()))
             .or(update_config(controller.clone()))
     );
@@ -506,6 +509,75 @@ fn add_penalty_try(
                     }
                     Err(e) => {
                         error!("Failed to add penalty try: {}", e);
+                        json_reply(ApiResponse::<String>::error(e.to_string()))
+                    }
+                }
+            }
+        })
+}
+
+/// POST /api/rugby/start-first-half
+fn start_first_half(
+    controller: Arc<ScoreboardController>,
+) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    warp::path!("rugby" / "start-first-half")
+        .and(warp::post())
+        .and_then(move || {
+            let controller = controller.clone();
+            async move {
+                match controller.start_first_half().await {
+                    Ok(_) => {
+                        info!("First half started");
+                        json_reply(ApiResponse::success("First half started".to_string()))
+                    }
+                    Err(e) => {
+                        error!("Failed to start first half: {}", e);
+                        json_reply(ApiResponse::<String>::error(e.to_string()))
+                    }
+                }
+            }
+        })
+}
+
+/// POST /api/rugby/start-second-half
+fn start_second_half(
+    controller: Arc<ScoreboardController>,
+) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    warp::path!("rugby" / "start-second-half")
+        .and(warp::post())
+        .and_then(move || {
+            let controller = controller.clone();
+            async move {
+                match controller.start_second_half().await {
+                    Ok(_) => {
+                        info!("Second half started");
+                        json_reply(ApiResponse::success("Second half started".to_string()))
+                    }
+                    Err(e) => {
+                        error!("Failed to start second half: {}", e);
+                        json_reply(ApiResponse::<String>::error(e.to_string()))
+                    }
+                }
+            }
+        })
+}
+
+/// POST /api/rugby/end-period
+fn end_period(
+    controller: Arc<ScoreboardController>,
+) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    warp::path!("rugby" / "end-period")
+        .and(warp::post())
+        .and_then(move || {
+            let controller = controller.clone();
+            async move {
+                match controller.end_period().await {
+                    Ok(_) => {
+                        info!("Period ended");
+                        json_reply(ApiResponse::success("Period ended".to_string()))
+                    }
+                    Err(e) => {
+                        error!("Failed to end period: {}", e);
                         json_reply(ApiResponse::<String>::error(e.to_string()))
                     }
                 }

@@ -1,0 +1,12 @@
+server:
+  web_port: 3030
+  simulation_mode: true
+scoreboard:
+  address: "192.168.1.100:5200"
+  card_id: 1
+  connection_timeout_seconds: 5
+  reconnect_interval_seconds: 30
+rugby:
+  try_points: 5
+  conversion_points: 2
+  penalty_points: 3

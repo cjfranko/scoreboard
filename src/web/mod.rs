@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::convert::Infallible;
 use log::{info, error};
 
-use crate::scoreboard::{ScoreboardController, ScoreboardState};
+use crate::scoreboard::ScoreboardController;
 
 #[derive(Debug, Deserialize)]
 pub struct TeamUpdate {
@@ -22,6 +22,22 @@ pub struct ScoreUpdate {
 pub struct TimerUpdate {
     pub minutes: u8,
     pub seconds: u8,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TeamAction {
+    pub team: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ConfigUpdate {
+    pub web_port: Option<u16>,
+    pub simulation_mode: Option<bool>,
+    pub scoreboard_address: Option<String>,
+    pub card_id: Option<u8>,
+    pub try_points: Option<u16>,
+    pub conversion_points: Option<u16>,
+    pub penalty_points: Option<u16>,
 }
 
 #[derive(Debug, Serialize)]
@@ -70,6 +86,10 @@ pub fn create_routes(
         .and(warp::get())
         .and(warp::fs::file("static/index.html"));
 
+    let config_page = warp::path("config")
+        .and(warp::get())
+        .and(warp::fs::file("static/config.html"));
+
     let api_routes = warp::path("api").and(
         get_status(controller.clone())
             .or(set_teams(controller.clone()))
@@ -81,9 +101,16 @@ pub fn create_routes(
             .or(start_timer(controller.clone()))
             .or(stop_timer(controller.clone()))
             .or(reset_timer(controller.clone()))
+            .or(add_try(controller.clone()))
+            .or(remove_try(controller.clone()))
+            .or(add_conversion(controller.clone()))
+            .or(add_penalty(controller.clone()))
+            .or(get_config(controller.clone()))
+            .or(update_config(controller.clone()))
     );
 
     index
+        .or(config_page)
         .or(static_files)
         .or(api_routes)
         .with(cors)
@@ -313,6 +340,131 @@ fn reset_timer(
                         json_reply(ApiResponse::<String>::error(e.to_string()))
                     }
                 }
+            }
+        })
+}/// POST /api/rugby/try
+fn add_try(
+    controller: Arc<ScoreboardController>,
+) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    warp::path!("rugby" / "try")
+        .and(warp::post())
+        .and(warp::body::json())
+        .and_then(move |team_action: TeamAction| {
+            let controller = controller.clone();
+            async move {
+                match controller.add_try(&team_action.team).await {
+                    Ok(_) => {
+                        info!("Try added for team: {}", team_action.team);
+                        json_reply(ApiResponse::success(format!("Try added for {}", team_action.team)))
+                    }
+                    Err(e) => {
+                        error!("Failed to add try: {}", e);
+                        json_reply(ApiResponse::<String>::error(e.to_string()))
+                    }
+                }
+            }
+        })
+}
+
+/// DELETE /api/rugby/try
+fn remove_try(
+    controller: Arc<ScoreboardController>,
+) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    warp::path!("rugby" / "try")
+        .and(warp::delete())
+        .and(warp::body::json())
+        .and_then(move |team_action: TeamAction| {
+            let controller = controller.clone();
+            async move {
+                match controller.remove_try(&team_action.team).await {
+                    Ok(_) => {
+                        info!("Try removed for team: {}", team_action.team);
+                        json_reply(ApiResponse::success(format!("Try removed for {}", team_action.team)))
+                    }
+                    Err(e) => {
+                        error!("Failed to remove try: {}", e);
+                        json_reply(ApiResponse::<String>::error(e.to_string()))
+                    }
+                }
+            }
+        })
+}
+
+/// POST /api/rugby/conversion
+fn add_conversion(
+    controller: Arc<ScoreboardController>,
+) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    warp::path!("rugby" / "conversion")
+        .and(warp::post())
+        .and(warp::body::json())
+        .and_then(move |team_action: TeamAction| {
+            let controller = controller.clone();
+            async move {
+                match controller.add_conversion(&team_action.team).await {
+                    Ok(_) => {
+                        info!("Conversion added for team: {}", team_action.team);
+                        json_reply(ApiResponse::success(format!("Conversion added for {}", team_action.team)))
+                    }
+                    Err(e) => {
+                        error!("Failed to add conversion: {}", e);
+                        json_reply(ApiResponse::<String>::error(e.to_string()))
+                    }
+                }
+            }
+        })
+}
+
+/// POST /api/rugby/penalty
+fn add_penalty(
+    controller: Arc<ScoreboardController>,
+) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    warp::path!("rugby" / "penalty")
+        .and(warp::post())
+        .and(warp::body::json())
+        .and_then(move |team_action: TeamAction| {
+            let controller = controller.clone();
+            async move {
+                match controller.add_penalty(&team_action.team).await {
+                    Ok(_) => {
+                        info!("Penalty added for team: {}", team_action.team);
+                        json_reply(ApiResponse::success(format!("Penalty added for {}", team_action.team)))
+                    }
+                    Err(e) => {
+                        error!("Failed to add penalty: {}", e);
+                        json_reply(ApiResponse::<String>::error(e.to_string()))
+                    }
+                }
+            }
+        })
+}
+
+/// GET /api/config
+fn get_config(
+    controller: Arc<ScoreboardController>,
+) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    warp::path!("config")
+        .and(warp::get())
+        .and_then(move || {
+            let controller = controller.clone();
+            async move {
+                // Get current config from controller
+                json_reply(ApiResponse::success("Configuration access not yet implemented".to_string()))
+            }
+        })
+}
+
+/// POST /api/config
+fn update_config(
+    controller: Arc<ScoreboardController>,
+) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    warp::path!("config")
+        .and(warp::post())
+        .and(warp::body::json())
+        .and_then(move |config_update: ConfigUpdate| {
+            let controller = controller.clone();
+            async move {
+                // Update config through controller
+                json_reply(ApiResponse::success("Configuration update not yet implemented".to_string()))
             }
         })
 }

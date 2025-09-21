@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HRUFC Rugby Scoreboard Configuration</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        .nav-links {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .nav-links a {
+            color: #007bff;
+            text-decoration: none;
+            margin: 0 10px;
+            padding: 10px 20px;
+            border: 1px solid #007bff;
+            border-radius: 4px;
+        }
+        .nav-links a:hover {
+            background-color: #007bff;
+            color: white;
+        }
+        .config-section {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .config-section h3 {
+            margin-top: 0;
+            color: #495057;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #495057;
+        }
+        input[type="text"], input[type="number"], select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        input[type="checkbox"] {
+            margin-right: 8px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px 5px 5px 0;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button.success {
+            background-color: #28a745;
+        }
+        button.success:hover {
+            background-color: #218838;
+        }
+        button.danger {
+            background-color: #dc3545;
+        }
+        button.danger:hover {
+            background-color: #c82333;
+        }
+        .message {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            display: none;
+        }
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .description {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>HRUFC Rugby Scoreboard Configuration</h1>
+        </div>
+
+        <div class="nav-links">
+            <a href="/">← Back to Scoreboard</a>
+        </div>
+
+        <div id="message" class="message"></div>
+
+        <div class="config-section">
+            <h3>Server Configuration</h3>
+            <div class="form-group">
+                <label for="web-port">Web Server Port:</label>
+                <input type="number" id="web-port" min="1" max="65535" value="3030">
+                <div class="description">Port for the web interface (default: 80 for standard HTTP)</div>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="simulation-mode"> Simulation Mode
+                </label>
+                <div class="description">Run without connecting to physical scoreboard (for testing)</div>
+            </div>
+        </div>
+
+        <div class="config-section">
+            <h3>Scoreboard Hardware Configuration</h3>
+            <div class="form-group">
+                <label for="scoreboard-address">Scoreboard IP Address:Port:</label>
+                <input type="text" id="scoreboard-address" placeholder="192.168.1.100:5200">
+                <div class="description">IP address and port of the CPower scoreboard controller</div>
+            </div>
+            <div class="form-group">
+                <label for="card-id">Card ID:</label>
+                <input type="number" id="card-id" min="1" max="254" value="1">
+                <div class="description">CPower card identifier (1-254)</div>
+            </div>
+        </div>
+
+        <div class="config-section">
+            <h3>Rugby Scoring Configuration</h3>
+            <div class="form-group">
+                <label for="try-points">Points for Try:</label>
+                <input type="number" id="try-points" min="0" max="50" value="5">
+                <div class="description">Points awarded for a try (default: 5)</div>
+            </div>
+            <div class="form-group">
+                <label for="conversion-points">Points for Conversion:</label>
+                <input type="number" id="conversion-points" min="0" max="50" value="2">
+                <div class="description">Points awarded for a conversion kick (default: 2)</div>
+            </div>
+            <div class="form-group">
+                <label for="penalty-points">Points for Penalty:</label>
+                <input type="number" id="penalty-points" min="0" max="50" value="3">
+                <div class="description">Points awarded for a penalty kick (default: 3)</div>
+            </div>
+        </div>
+
+        <div class="config-section">
+            <button class="success" onclick="saveConfiguration()">Save Configuration</button>
+            <button onclick="loadConfiguration()">Load Current Configuration</button>
+            <button class="danger" onclick="resetToDefaults()">Reset to Defaults</button>
+        </div>
+    </div>
+
+    <script>
+        // Show message to user
+        function showMessage(text, isError = false) {
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = text;
+            messageEl.className = `message ${isError ? 'error' : 'success'}`;
+            messageEl.style.display = 'block';
+            
+            setTimeout(() => {
+                messageEl.style.display = 'none';
+            }, 5000);
+        }
+
+        // API helper function
+        async function apiCall(endpoint, method = 'GET', data = null) {
+            try {
+                const options = {
+                    method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                };
+                
+                if (data) {
+                    options.body = JSON.stringify(data);
+                }
+                
+                const response = await fetch(`/api/${endpoint}`, options);
+                const result = await response.json();
+                
+                if (result.success) {
+                    return result;
+                } else {
+                    throw new Error(result.error || 'Unknown error');
+                }
+            } catch (error) {
+                console.error('API call failed:', error);
+                throw error;
+            }
+        }
+
+        // Load current configuration
+        async function loadConfiguration() {
+            try {
+                showMessage('Configuration loading is not yet implemented', true);
+                // TODO: Implement when API is ready
+                // const result = await apiCall('config');
+                // updateUI(result.data);
+            } catch (error) {
+                showMessage(`Failed to load configuration: ${error.message}`, true);
+            }
+        }
+
+        // Save configuration
+        async function saveConfiguration() {
+            const config = {
+                web_port: parseInt(document.getElementById('web-port').value),
+                simulation_mode: document.getElementById('simulation-mode').checked,
+                scoreboard_address: document.getElementById('scoreboard-address').value,
+                card_id: parseInt(document.getElementById('card-id').value),
+                try_points: parseInt(document.getElementById('try-points').value),
+                conversion_points: parseInt(document.getElementById('conversion-points').value),
+                penalty_points: parseInt(document.getElementById('penalty-points').value)
+            };
+
+            try {
+                showMessage('Configuration saving is not yet implemented', true);
+                // TODO: Implement when API is ready
+                // await apiCall('config', 'POST', config);
+                // showMessage('Configuration saved successfully! Restart the server for changes to take effect.');
+            } catch (error) {
+                showMessage(`Failed to save configuration: ${error.message}`, true);
+            }
+        }
+
+        // Reset to defaults
+        function resetToDefaults() {
+            if (confirm('Reset all settings to default values?')) {
+                document.getElementById('web-port').value = 3030;
+                document.getElementById('simulation-mode').checked = false;
+                document.getElementById('scoreboard-address').value = '192.168.1.100:5200';
+                document.getElementById('card-id').value = 1;
+                document.getElementById('try-points').value = 5;
+                document.getElementById('conversion-points').value = 2;
+                document.getElementById('penalty-points').value = 3;
+                showMessage('Configuration reset to defaults');
+            }
+        }
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            loadConfiguration();
+        });
+    </script>
+</body>
+</html>

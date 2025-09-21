@@ -104,7 +104,10 @@ pub fn create_routes(
             .or(add_try(controller.clone()))
             .or(remove_try(controller.clone()))
             .or(add_conversion(controller.clone()))
+            .or(remove_conversion(controller.clone()))
             .or(add_penalty(controller.clone()))
+            .or(remove_penalty(controller.clone()))
+            .or(add_penalty_try(controller.clone()))
             .or(get_config(controller.clone()))
             .or(update_config(controller.clone()))
     );
@@ -431,6 +434,78 @@ fn add_penalty(
                     }
                     Err(e) => {
                         error!("Failed to add penalty: {}", e);
+                        json_reply(ApiResponse::<String>::error(e.to_string()))
+                    }
+                }
+            }
+        })
+}
+
+/// DELETE /api/rugby/conversion
+fn remove_conversion(
+    controller: Arc<ScoreboardController>,
+) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    warp::path!("rugby" / "conversion")
+        .and(warp::delete())
+        .and(warp::body::json())
+        .and_then(move |team_action: TeamAction| {
+            let controller = controller.clone();
+            async move {
+                match controller.remove_conversion(&team_action.team).await {
+                    Ok(_) => {
+                        info!("Conversion removed for team: {}", team_action.team);
+                        json_reply(ApiResponse::success(format!("Conversion removed for {}", team_action.team)))
+                    }
+                    Err(e) => {
+                        error!("Failed to remove conversion: {}", e);
+                        json_reply(ApiResponse::<String>::error(e.to_string()))
+                    }
+                }
+            }
+        })
+}
+
+/// DELETE /api/rugby/penalty
+fn remove_penalty(
+    controller: Arc<ScoreboardController>,
+) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    warp::path!("rugby" / "penalty")
+        .and(warp::delete())
+        .and(warp::body::json())
+        .and_then(move |team_action: TeamAction| {
+            let controller = controller.clone();
+            async move {
+                match controller.remove_penalty(&team_action.team).await {
+                    Ok(_) => {
+                        info!("Penalty removed for team: {}", team_action.team);
+                        json_reply(ApiResponse::success(format!("Penalty removed for {}", team_action.team)))
+                    }
+                    Err(e) => {
+                        error!("Failed to remove penalty: {}", e);
+                        json_reply(ApiResponse::<String>::error(e.to_string()))
+                    }
+                }
+            }
+        })
+}
+
+/// POST /api/rugby/penalty-try
+fn add_penalty_try(
+    controller: Arc<ScoreboardController>,
+) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    warp::path!("rugby" / "penalty-try")
+        .and(warp::post())
+        .and(warp::body::json())
+        .and_then(move |team_action: TeamAction| {
+            let controller = controller.clone();
+            async move {
+                match controller.add_penalty_try(&team_action.team).await {
+                    Ok(_) => {
+                        info!("Penalty try added for team: {}", team_action.team);
+                        json_reply(ApiResponse::success(format!("Penalty try added for {}", team_action.team)))
+                    }
+                    Err(e) => {
+                        error!("Failed to add penalty try: {}", e);
                         json_reply(ApiResponse::<String>::error(e.to_string()))
                     }
                 }

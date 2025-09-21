@@ -263,7 +263,10 @@
                         <button class="success" onclick="addTry('home')">Add Try (+5)</button>
                         <button class="warning" onclick="removeTry('home')">Remove Try (-5)</button>
                         <button class="success" onclick="addConversion('home')">Add Conversion (+2)</button>
+                        <button class="warning" onclick="removeConversion('home')">Remove Conversion (-2)</button>
                         <button class="success" onclick="addPenalty('home')">Add Penalty (+3)</button>
+                        <button class="warning" onclick="removePenalty('home')">Remove Penalty (-3)</button>
+                        <button class="success" onclick="addPenaltyTry('home')">Add Penalty Try (+7)</button>
                     </div>
                 </div>
                 <div class="form-group">
@@ -272,7 +275,10 @@
                         <button class="success" onclick="addTry('away')">Add Try (+5)</button>
                         <button class="warning" onclick="removeTry('away')">Remove Try (-5)</button>
                         <button class="success" onclick="addConversion('away')">Add Conversion (+2)</button>
+                        <button class="warning" onclick="removeConversion('away')">Remove Conversion (-2)</button>
                         <button class="success" onclick="addPenalty('away')">Add Penalty (+3)</button>
+                        <button class="warning" onclick="removePenalty('away')">Remove Penalty (-3)</button>
+                        <button class="success" onclick="addPenaltyTry('away')">Add Penalty Try (+7)</button>
                     </div>
                 </div>
             </div>
@@ -562,6 +568,39 @@
                 loadStatus();
             } catch (error) {
                 showMessage(`Failed to add penalty: ${error.message}`, true);
+            }
+        }
+
+        // Remove conversion (2 points)
+        async function removeConversion(team) {
+            try {
+                await apiCall('rugby/conversion', 'DELETE', { team: team });
+                showMessage(`Conversion removed for ${team.charAt(0).toUpperCase() + team.slice(1)} team (-2 points)`);
+                loadStatus();
+            } catch (error) {
+                showMessage(`Failed to remove conversion: ${error.message}`, true);
+            }
+        }
+
+        // Remove penalty (3 points)
+        async function removePenalty(team) {
+            try {
+                await apiCall('rugby/penalty', 'DELETE', { team: team });
+                showMessage(`Penalty removed for ${team.charAt(0).toUpperCase() + team.slice(1)} team (-3 points)`);
+                loadStatus();
+            } catch (error) {
+                showMessage(`Failed to remove penalty: ${error.message}`, true);
+            }
+        }
+
+        // Add penalty try (7 points)
+        async function addPenaltyTry(team) {
+            try {
+                await apiCall('rugby/penalty-try', 'POST', { team: team });
+                showMessage(`Penalty try added for ${team.charAt(0).toUpperCase() + team.slice(1)} team (+7 points)`);
+                loadStatus();
+            } catch (error) {
+                showMessage(`Failed to add penalty try: ${error.message}`, true);
             }
         }
 

@@ -347,6 +347,74 @@ impl ScoreboardController {
         }
     }
 
+    /// Remove a conversion from the specified team (-2 points)
+    pub async fn remove_conversion(&self, team: &str) -> Result<()> {
+        let conversion_points = self.config.rugby.conversion_points;
+        match team.to_lowercase().as_str() {
+            "home" => {
+                let current_score = self.get_home_score().await;
+                let new_score = if current_score >= conversion_points {
+                    current_score - conversion_points
+                } else {
+                    0
+                };
+                self.set_scores(new_score, self.get_away_score().await).await
+            }
+            "away" => {
+                let current_score = self.get_away_score().await;
+                let new_score = if current_score >= conversion_points {
+                    current_score - conversion_points
+                } else {
+                    0
+                };
+                self.set_scores(self.get_home_score().await, new_score).await
+            }
+            _ => Err(anyhow::anyhow!("Invalid team: {}", team)),
+        }
+    }
+
+    /// Remove a penalty from the specified team (-3 points)
+    pub async fn remove_penalty(&self, team: &str) -> Result<()> {
+        let penalty_points = self.config.rugby.penalty_points;
+        match team.to_lowercase().as_str() {
+            "home" => {
+                let current_score = self.get_home_score().await;
+                let new_score = if current_score >= penalty_points {
+                    current_score - penalty_points
+                } else {
+                    0
+                };
+                self.set_scores(new_score, self.get_away_score().await).await
+            }
+            "away" => {
+                let current_score = self.get_away_score().await;
+                let new_score = if current_score >= penalty_points {
+                    current_score - penalty_points
+                } else {
+                    0
+                };
+                self.set_scores(self.get_home_score().await, new_score).await
+            }
+            _ => Err(anyhow::anyhow!("Invalid team: {}", team)),
+        }
+    }
+
+    /// Add a penalty try to the specified team (7 points - try + conversion)
+    pub async fn add_penalty_try(&self, team: &str) -> Result<()> {
+        let penalty_try_points = 7; // Standard penalty try is 7 points (try + conversion combined)
+        match team.to_lowercase().as_str() {
+            "home" => {
+                let current_score = self.get_home_score().await;
+                self.set_scores(current_score + penalty_try_points, self.get_away_score().await).await
+            }
+            "away" => {
+                let current_score = self.get_away_score().await;
+                self.set_scores(self.get_home_score().await, current_score + penalty_try_points).await
+            }
+            _ => Err(anyhow::anyhow!("Invalid team: {}", team)),
+        }
+    }
+
     /// Get current state
     pub async fn get_state(&self) -> ScoreboardState {
         self.state.lock().await.clone()
